@@ -13,10 +13,18 @@ import { Loader2 } from "lucide-react";
 import ScoreIndicator from "@/components/ScoreIndicator";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [language, setLanguage] = useState("hi-Latn");
   const [result, setResult] = useState<{
     score: number;
     summary: string;
@@ -35,7 +43,10 @@ export default function Home() {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       sieveJobJson = await getSieveJob(sieveJobJson.id);
     }
-    const transcript = await getTranscript(sieveJobJson.outputs[0].data.url);
+    const transcript = await getTranscript(
+      sieveJobJson.outputs[0].data.url,
+      language
+    );
     const result = await analyzeVideo(transcript.result);
     setResult({ ...result, transcript: transcript.result });
     toast.success("Video analyzed successfully");
@@ -67,6 +78,15 @@ export default function Home() {
             }
           }}
         />
+        <Select value={language} onValueChange={(value) => setLanguage(value)}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="lang" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="hi-Latn">Hinglish</SelectItem>
+            <SelectItem value="en">English</SelectItem>
+          </SelectContent>
+        </Select>
         <Button
           type="submit"
           disabled={loading}
@@ -89,7 +109,12 @@ export default function Home() {
           <iframe
             width="560"
             height="315"
-            src={`https://www.youtube.com/embed/${url.split("v=")[1] || url}`}
+            src={`https://www.youtube.com/embed/${
+              url.split("v=")[1] ||
+              url.split("youtu.be/")[1] ||
+              url.split("shorts/")[1] ||
+              url
+            }`}
             title="YouTube video player"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen

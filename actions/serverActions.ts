@@ -39,12 +39,15 @@ export async function analyzeVideo(transcript: string, screenshots?: string[]) {
   return object;
 }
 
-export async function getTranscript(remoteVideoUrl: string) {
+export async function getTranscript(
+  remoteVideoUrl: string,
+  language: string = "hi-Latn"
+) {
   if (!process.env.DEEPGRAM_API_KEY) {
     throw new Error("DEEPGRAM_API_KEY is not set");
   }
   const deepgramRes = await fetch(
-    "https://api.deepgram.com/v1/listen?model=nova-2&language=hi-Latn",
+    `https://api.deepgram.com/v1/listen?model=nova-2&language=${language}`,
     {
       method: "POST",
       headers: {

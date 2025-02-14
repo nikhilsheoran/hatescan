@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { analyzeVideo, getTranscript } from "@/actions/serverActions";
+import {
+  analyzeVideo,
+  createSieveJob,
+  getSieveJob,
+  getTranscript,
+} from "@/actions/serverActions";
 import { Loader2 } from "lucide-react";
 import ScoreIndicator from "@/components/ScoreIndicator";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,14 +25,20 @@ export default function Home() {
 
   async function handleSubmit() {
     setLoading(true);
-    const transcript = await getTranscript(url.split("v=")[1] || url);
-    if (transcript.status !== 200) {
-      toast.error(transcript.result);
-      setLoading(false);
-      return;
+    let sieveJobJson = await createSieveJob(
+      url.split("v=")[1] ||
+        url.split("youtu.be/")[1] ||
+        url.split("shorts/")[1] ||
+        url
+    );
+    while (sieveJobJson.status !== "finished") {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      sieveJobJson = await getSieveJob(sieveJobJson.id);
     }
+    const transcript = await getTranscript(sieveJobJson.outputs[0].data.url);
     const result = await analyzeVideo(transcript.result);
     setResult({ ...result, transcript: transcript.result });
+    toast.success("Video analyzed successfully");
     setLoading(false);
   }
 
@@ -104,9 +115,7 @@ export default function Home() {
             <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
               Summary
             </h3>
-            <p className="text-gray-600 dark:text-gray-300">
-              {result.summary}
-            </p>
+            <p className="text-gray-600 dark:text-gray-300">{result.summary}</p>
           </div>
 
           <div>

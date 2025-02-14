@@ -39,7 +39,27 @@ export async function analyzeVideo(transcript: string, screenshots?: string[]) {
   return object;
 }
 
-export async function getTranscript(videoId: string) {
+export async function getTranscript(remoteVideoUrl: string) {
+  if (!process.env.DEEPGRAM_API_KEY) {
+    throw new Error("DEEPGRAM_API_KEY is not set");
+  }
+  const deepgramRes = await fetch(
+    "https://api.deepgram.com/v1/listen?model=nova-2&language=hi-Latn",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
+      },
+      body: JSON.stringify({ url: remoteVideoUrl }),
+    }
+  );
+  const deepgramJson = await deepgramRes.json();
+  console.log("deepgramJson", deepgramJson.results.channels[0], null, 2);
+  return deepgramJson.results.channels[0].alternatives[0].transcript;
+}
+
+export async function createSieveJob(videoId: string) {
   if (!process.env.SIEVE_API_KEY) {
     console.error("SIEVE_API_KEY is not set");
     return { result: "SIEVE_API_KEY is not set", status: 500 };
@@ -63,38 +83,24 @@ export async function getTranscript(videoId: string) {
       },
     }),
   });
-  let sieveJobJson = await sieveJob.json();
-  const sieveJobId = sieveJobJson.id;
 
-  while (sieveJobJson.status !== "finished") {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const sieveRes = await fetch(
-      `https://mango.sievedata.com/v2/jobs/${sieveJobId}`,
-      {
-        headers: {
-          "X-Api-Key": process.env.SIEVE_API_KEY,
-        },
-      }
-    );
-    sieveJobJson = await sieveRes.json();
+  const sieveJobJson = await sieveJob.json();
+  return sieveJobJson;
+}
+
+export async function getSieveJob(sieveJobId: string) {
+  if (!process.env.SIEVE_API_KEY) {
+    console.error("SIEVE_API_KEY is not set");
+    return { result: "SIEVE_API_KEY is not set", status: 500 };
   }
-  console.log("sieveJobJson", sieveJobJson.outputs[0].data.url, null, 2);
-
-  const deepgramRes = await fetch(
-    "https://api.deepgram.com/v1/listen?model=nova-2&language=hi-Latn",
+  const sieveJob = await fetch(
+    `https://mango.sievedata.com/v2/jobs/${sieveJobId}`,
     {
-      method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
+        "X-Api-Key": process.env.SIEVE_API_KEY,
       },
-      body: JSON.stringify({ url: sieveJobJson.outputs[0].data.url }),
     }
   );
-  const deepgramJson = await deepgramRes.json();
-  console.log("deepgramJson", deepgramJson.results.channels[0], null, 2);
-  return {
-    result: deepgramJson.results.channels[0].alternatives[0].transcript,
-    status: 200,
-  };
+  const sieveJobJson = await sieveJob.json();
+  return sieveJobJson;
 }
